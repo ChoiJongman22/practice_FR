@@ -97,7 +97,7 @@ class _CameraScreenState extends State<CameraScreen> {
     return Expanded(
       child: Align(
         alignment: Alignment.centerLeft,
-        child: FlatButton.icon(
+        child: TextButton.icon(
             onPressed: () {
               onSwitchCamera();
             },
@@ -122,7 +122,6 @@ class _CameraScreenState extends State<CameraScreen> {
       final path = "${p.path}/$name.png";
 
       await cameraController.takePicture().then((value) {
-
         print('here');
         print(path);
         Navigator.push(context, MaterialPageRoute(builder: (context) =>PreviewScreen(imgPath: path,fileName: "$name.png",)));
