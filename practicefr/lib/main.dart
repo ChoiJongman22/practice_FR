@@ -1,23 +1,117 @@
+import 'dart:async';
+import 'dart:io';
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:practicefr/src/camera.dart';
 
-void main() {
-  runApp(MyApp());
+Future<void> main() async{
+  WidgetsFlutterBinding.ensureInitialized();
+  final cameras=await availableCameras();
+
+  final firstCamera=cameras.first;
+
+  runApp(
+    MaterialApp(
+      theme: ThemeData.dark(),
+      home:TakePictureScreen(
+        camera:firstCamera,
+      )
+    )
+  );
 }
 
-class MyApp extends StatelessWidget{
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: "JongMan Camera",
-      debugShowCheckedModeBanner: false, //debug 마크 삭제
-      theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
+class TakePictureScreen extends StatefulWidget{
 
-      ),
-      home:CameraScreen(),
+  final CameraDescription camera;
+
+  const TakePictureScreen({
+    Key key,
+    @required this.camera,
+}) :super(key:key);
+
+  @override
+  TakePictureScreenState createState()=> TakePictureScreenState();
+
+}
+
+class TakePictureScreenState extends State<TakePictureScreen>{
+  CameraController _controller;
+  Future<void> _initializeControllerFuture;
+
+  @override
+  void initState(){
+    super.initState();
+    _controller=CameraController(
+      widget.camera,
+      ResolutionPreset.medium,
     );
+
+    _initializeControllerFuture=_controller.initialize();
   }
 
+  @override
+  void dispose(){
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title:Text("Take a picture")),
+      body: Expanded(
+        child: FutureBuilder<void>(
+          future: _initializeControllerFuture,
+          builder: (context,snapshot){
+            if(snapshot.connectionState==ConnectionState.done){
+              return CameraPreview(_controller);
+            }else{
+              return Center(child:CircularProgressIndicator());
+            }
+          },
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        child: Icon(Icons.camera_alt),
+        onPressed: () async{
+          try{
+            await _initializeControllerFuture;
+            final image=await _controller.takePicture();
+
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder:(context)=>DisplayPictureScreen(
+                    imagePath:image?.path,
+                  ) )
+            );
+          }catch(e){
+            print(e);
+          }
+        },
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        items: [
+          BottomNavigationBarItem(
+            label: "종만이",
+
+
+          )
+        ],
+      ) ,
+
+    );
+  }
+}
+
+class DisplayPictureScreen extends StatelessWidget{
+  final String imagePath;
+  const DisplayPictureScreen({Key key,this.imagePath}):super(key:key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title:Text('Display the Picture')),
+      body: Image.file(File(imagePath)),
+    );
+  }
 }
