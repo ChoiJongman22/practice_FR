@@ -1,117 +1,40 @@
-import 'dart:async';
-import 'dart:io';
-import 'package:camera/camera.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:practicefr/data/join_or_login.dart';
+import 'package:practicefr/src/home.dart';
+import 'package:practicefr/src/login.dart';
+import 'package:provider/provider.dart';
 
-Future<void> main() async{
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final cameras=await availableCameras();
-
-  final firstCamera=cameras.first;
-
-  runApp(
-    MaterialApp(
-      theme: ThemeData.dark(),
-      home:TakePictureScreen(
-        camera:firstCamera,
-      )
-    )
-  );
+  await Firebase.initializeApp();
+  runApp(MyApp());
 }
 
-class TakePictureScreen extends StatefulWidget{
-
-  final CameraDescription camera;
-
-  const TakePictureScreen({
-    Key key,
-    @required this.camera,
-}) :super(key:key);
-
-  @override
-  TakePictureScreenState createState()=> TakePictureScreenState();
-
-}
-
-class TakePictureScreenState extends State<TakePictureScreen>{
-  CameraController _controller;
-  Future<void> _initializeControllerFuture;
-
-  @override
-  void initState(){
-    super.initState();
-    _controller=CameraController(
-      widget.camera,
-      ResolutionPreset.medium,
-    );
-
-    _initializeControllerFuture=_controller.initialize();
-  }
-
-  @override
-  void dispose(){
-    _controller.dispose();
-    super.dispose();
-  }
-
+class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title:Text("Take a picture")),
-      body: Expanded(
-        child: FutureBuilder<void>(
-          future: _initializeControllerFuture,
-          builder: (context,snapshot){
-            if(snapshot.connectionState==ConnectionState.done){
-              return CameraPreview(_controller);
-            }else{
-              return Center(child:CircularProgressIndicator());
-            }
-          },
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.camera_alt),
-        onPressed: () async{
-          try{
-            await _initializeControllerFuture;
-            final image=await _controller.takePicture();
+    return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Splash()
+    );
+  }
+}
 
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder:(context)=>DisplayPictureScreen(
-                    imagePath:image?.path,
-                  ) )
-            );
-          }catch(e){
-            print(e);
+class Splash extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.data == null) {
+            return ChangeNotifierProvider<JoinOrLogin>.value(
+                value: JoinOrLogin(), child: LoginPage());
+          } else {
+            return HomePage(email: snapshot.data.email);
           }
-        },
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: [
-          BottomNavigationBarItem(
-            label: "종만이",
-
-
-          )
-        ],
-      ) ,
-
-    );
-  }
-}
-
-class DisplayPictureScreen extends StatelessWidget{
-  final String imagePath;
-  const DisplayPictureScreen({Key key,this.imagePath}):super(key:key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title:Text('Display the Picture')),
-      body: Image.file(File(imagePath)),
+        }
     );
   }
 }
